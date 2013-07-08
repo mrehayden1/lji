@@ -10,7 +10,7 @@ This program takes a music chart with an optional melody, which it then methodic
 
 For example, this is the song Autumn Leaves with a simplified melody.
 
-Gm
+    Gm
 
     Cm7 /   /   /   | F7  /   /   /   | Bb^  /   /   /   | Eb^  /   /   /   |
     A0  /   /   /   | D7  /   /   /   | Gm   /   /   /   | Gm   /   /   /   ||
