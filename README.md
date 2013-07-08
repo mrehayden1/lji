@@ -35,3 +35,5 @@ For example, this is the song Autumn Leaves with a simplified melody.
 
     Eb1             | A1              | D1               | G1               |
     C1              | A1              | G1               | G1               |||
+
+The program then outputs [Lilypond](http://www.lilypond.org/) notation for you to rehearse with.
