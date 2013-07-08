@@ -1,0 +1,124 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+module Main (
+    main
+  ) where
+
+import Control.Monad
+import Control.Monad.Error (runErrorT)
+import Control.Monad.Random (evalRandIO)
+import Control.Monad.Reader (MonadReader(..), ReaderT(..))
+import Control.Monad.Trans (MonadIO(..))
+
+import Data.Char (isSpace)
+import Data.List (foldl')
+
+import System.Environment (getArgs)
+import System.Exit (ExitCode(..), exitWith)
+
+import Main.Args (Op(..), Options(..), Range, opCmdStr, readOpts, readArgs)
+import Main.Console (putErrorAndExit)
+
+import Music (Class, Pitch, Dur, Note(..), (%), concatReps)
+import Music.Composer (compose, mordent, target)
+import Music.Notation.Optimiser (optimalNotation)
+
+import Output (melodyToLy)
+
+import Parser (Chart(..), Bar(..), parseChart, concatBars)
+import qualified Parser as P (concatReps)
+
+-- Types
+
+newtype Environment a = Env { unwrapEnvironment :: ReaderT Options IO a }
+  deriving (Monad, MonadReader Options, MonadIO)
+runEnvironment :: Options -> Environment a -> IO a
+runEnvironment os = flip runReaderT os . unwrapEnvironment
+
+-- Top level functions
+
+main :: IO ()
+main = do args <- getArgs
+          (opts, nopts)
+             <- case args of
+                  []   -> readOpts NoOp []
+                  a:as -> case a of
+                           a | a == opCmdStr Root   -> readOpts Root   as
+                             | a == opCmdStr Guide1 -> readOpts Guide1 as
+                             | a == opCmdStr Guide2 -> readOpts Guide2 as
+                             | otherwise            -> readOpts NoOp   (a:as)
+          opts' <- readArgs nopts opts
+          runEnvironment opts' run
+
+run :: Environment ()
+run = 
+  do opts <- ask
+     let melFn = optMelodyFn opts
+         src   = optSource   opts
+         out   = optOutput   opts
+         ts    = optTargets  opts
+         clef  = optClef     opts
+     file <- liftIO src
+     chart <- parseChart file
+     let key     = chrtKey chart
+         bars    = map P.concatReps
+                    . chrtBars $ chart
+         absMels = map (melFn . map barChd) bars
+         durs    = map (map barDur) bars
+     mels <-
+       case ts of
+         [] -> do ps <- mapM (generateMelody []) absMels
+                  let mel = map concatReps . zipWith (zipWith Note) ps $ durs
+                  return [mel]
+         _  -> sequence $
+                [ do ps <- mapM (generateMelody t) absMels
+                     let mel = map concatReps . zipWith (zipWith Note) ps $ durs
+                     mapM (targetMelody t) . neighbors $ mel 
+                | t <- ts ]
+     let notMels = map (optimalNotation key) . concat $ mels
+         ly      = melodyToLy key clef notMels
+     liftIO $ putStrLn ly
+     return ()
+
+mordentMelody :: [Int] -> [Note] -> Environment [Note]
+mordentMelody t ns = do
+  opts <- ask
+  let d   = optDur opts
+      mel = mapM (mordent d t) $ ns
+  either (liftIO . putErrorAndExit) (return . concat) mel
+
+targetMelody :: [Int] -> ([Note],[Note]) -> Environment [Note]
+targetMelody t (ns,ns') = do 
+  opts <- ask
+  let d   = optDur opts
+      mel = mapM (uncurry (target d t))
+             . neighbors
+             . (++ head' ns')
+             $ ns
+  either (liftIO . putErrorAndExit) (return . concat . init) mel
+
+head' :: [a] -> [a]
+head' []    = []
+head' (x:_) = [x]
+
+neighbors :: [a] -> [(a, a)]
+neighbors = liftM2 (zipWith (,)) id (cycle . drop 1)
+
+generateMelody :: [Int] -> [Class] -> Environment [Pitch]
+generateMelody ts absMel =
+  do opts <- ask
+     let rng     = optRange opts
+         d       = optDur   opts
+         tLow    = foldl' min 0 $ ts
+         tHi     = foldl' max 0 $ ts
+         (lo,hi) = optRange opts
+         rng'    = (lo - tLow,
+                    hi - tHi  )
+     liftIO . when ((snd rng' - fst rng') < 12) .
+       putErrorAndExit $ "Insufficient notes in range "
+                           ++ "to mordent melody with sequence "
+                           ++ show ts
+     ps <- liftIO 
+            . evalRandIO
+            . runErrorT
+            . compose rng' $ absMel
+     either (liftIO . putErrorAndExit) return ps
