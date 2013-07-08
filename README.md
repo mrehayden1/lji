@@ -1,3 +1,10 @@
+Disclaimer
+==========
+
+This is a very alpha version of this project and so I don't claim that it does anything useful at the present time.
+
+My helpful advice is: "If in doubt read the source code."
+
 How it works
 ============
 
@@ -37,3 +44,8 @@ For example, this is the song Autumn Leaves with a simplified melody.
     C1              | A1              | G1               | G1               |||
 
 The program then outputs [Lilypond](http://www.lilypond.org/) notation for you to rehearse with.
+
+Usage
+-----
+
+There are two executables `lji` and `lji-exercises` both have the same usage apart from a small detail. The latter, `lji-exercises`, will ignore the first command and targeting information to create all the exercises you need to practice LJI as specified in Dr Byrne's first book.
