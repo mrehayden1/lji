@@ -1,7 +1,7 @@
 How it works
 ============
 
-Linear Jazz Improvisation is a method to meaningful improvisation for musicians. You systematically create melodies, rehearse, and then edit later by keeping what you like when you play live.
+Linear Jazz Improvisation, [created by Dr Ed Byrne](http://byrnejazz.com), is a method to meaningful improvisation for musicians. You systematically create melodies, rehearse, and then edit later by keeping what you like when you play live.
 
 Program Input
 -------------
